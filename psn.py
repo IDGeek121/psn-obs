@@ -73,3 +73,14 @@ def get_trophies_earned_for_title(token: str, trophy_title: dict) -> dict:
     }
     data = urllib.parse.urlencode(data)
     return _get(f'{url}?{data}', token)
+
+def get_trophy_earned_for_title(token: str, trophy_title: dict, trophy_id: int):
+    url = f'https://m.np.playstation.net/api/trophy/v1/users/me/npCommunicationIds/{trophy_title["npCommunicationId"]}/trophyGroups/all/trophies'
+    data = {
+        'npServiceName': trophy_title['npServiceName'],
+        'limit': 1,
+        'offset': trophy_id,
+    }
+    data = urllib.parse.urlencode(data)
+    return _get(f'{url}?{data}', token)
+    
