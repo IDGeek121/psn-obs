@@ -21,7 +21,6 @@ def update_trophy_earned_status():
     # New query every 'timeout' seconds
     while not state.exit.wait(timeout = 3.5):
         #print('update_trophy_earned_status')
-        # Let's just skip if we are already displaying stuff
         if state.trophy_title:
             state.earned_trophies = psn.get_trophies_earned_for_title(state.token, state.trophy_title)
 
