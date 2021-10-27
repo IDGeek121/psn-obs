@@ -1,8 +1,18 @@
-from hashlib import new
 import psn
 import obspython as obs
 import threading
 import datetime
+
+
+def get_datetime_fromisoformat(str_in: str) -> datetime.datetime:
+    year = int(str_in[0:4])
+    month = int(str_in[5:7])
+    day = int(str_in[8:10])
+    hour = int(str_in[11:13])
+    minute = int(str_in[14:16])
+    sec = int(str_in[17:19])
+    retval = datetime.datetime(year, month, day, hour, minute, sec, 0, None)
+    return retval
 
 # Daemon thread that will query the server for the earned trophies every 5 seconds.
 def update_trophy_earned_status():
@@ -18,7 +28,7 @@ def update_trophy_earned_status():
             # trophies since the last query. If so, we need to generate a list
             # of trophies to print out, which will involve iterating over every
             # trophy and checking its progressedDateTime or earnedDateTime.
-            new_earned_datetime = datetime.datetime.fromisoformat(state.earned_trophies['lastUpdatedDateTime'][:-1])
+            new_earned_datetime = get_datetime_fromisoformat(state.earned_trophies['lastUpdatedDateTime'][:-1])
             # Ignore if first query
             if not state.previous_earned_datetime:
                 state.previous_earned_datetime = new_earned_datetime
@@ -26,11 +36,11 @@ def update_trophy_earned_status():
                 # List generation
                 for trophy in state.earned_trophies['trophies']:
                     if 'progressedDateTime' in trophy:
-                        progressed_datetime = datetime.datetime.fromisoformat(trophy['progressedDateTime'][:-1])
+                        progressed_datetime = get_datetime_fromisoformat(trophy['progressedDateTime'][:-1])
                         if state.previous_earned_datetime < progressed_datetime:
                             state.list_of_trophies_to_display.append(trophy['trophyId'])
                     elif trophy['earned']:
-                        earned_datetime = datetime.datetime.fromisoformat(trophy['earnedDateTime'][:-1])
+                        earned_datetime = get_datetime_fromisoformat(trophy['earnedDateTime'][:-1])
                         if state.previous_earned_datetime < earned_datetime:
                             state.list_of_trophies_to_display.append(trophy['trophyId'])
 
