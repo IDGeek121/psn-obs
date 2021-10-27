@@ -40,11 +40,13 @@ def update_trophy_earned_status():
                         new_earned_datetime = max(new_earned_datetime, progressed_datetime)
                         if state.previous_earned_datetime < progressed_datetime:
                             state.list_of_trophies_to_display.append(trophy['trophyId'])
+                            print(f'{trophy["trophyId"]} {progressed_datetime} {state.previous_earned_datetime}')
                     elif trophy['earned']:
                         earned_datetime = get_datetime_fromisoformat(trophy['earnedDateTime'][:-1])
                         new_earned_datetime = max(new_earned_datetime, earned_datetime)
                         if state.previous_earned_datetime < earned_datetime:
                             state.list_of_trophies_to_display.append(trophy['trophyId'])
+                            print(f'{trophy["trophyId"]} {earned_datetime} {state.previous_earned_datetime}')
 
                 # Epilog. Update the time and kick off the display state.
                 state.previous_earned_datetime = new_earned_datetime
@@ -70,6 +72,7 @@ class PSNState:
     trophy_display_dt = 0
     exit = threading.Event()
     psn_thread = threading.Thread(target = update_trophy_earned_status, daemon = True)
+    media_source = None
 
 state = PSNState()
 
@@ -265,3 +268,18 @@ def display_trophy_progress():
     obs.obs_data_set_string(browser_source_settings, 'url', state.trophy['trophyIconUrl'])
     obs.obs_source_update(browser_source, browser_source_settings)
     obs.obs_source_release(browser_source)
+
+    # Play a sound effect if the trophy was actually earned
+    if state.earned_trophy['earned']:
+        state.media_source = obs.obs_source_create_private('ffmpeg_source', 'Global Media Source', None)
+        s = obs.obs_data_create()
+        if state.earned_trophy['trophyType'] == 'platinum':
+            filename = 'trophy_plat.wav'
+        else:
+            filename = 'trophy.wav'
+        obs.obs_data_set_string(s, 'local_file', script_path() + filename)
+        obs.obs_source_update(state.media_source, s)
+        obs.obs_source_set_monitoring_type(state.media_source, obs.OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT)
+        obs.obs_data_release(s)
+        obs.obs_set_output_source(63, state.media_source)
+        obs.obs_source_release(state.media_source)
