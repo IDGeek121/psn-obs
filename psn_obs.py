@@ -19,8 +19,9 @@ def update_trophy_earned_status():
     global state
 
     # New query every 'timeout' seconds
-    while not state.exit.wait(timeout = 4.0):
+    while not state.exit.wait(timeout = 3.5):
         #print('update_trophy_earned_status')
+        # Let's just skip if we are already displaying stuff
         if state.trophy_title:
             state.earned_trophies = psn.get_trophies_earned_for_title(state.token, state.trophy_title)
 
@@ -37,16 +38,17 @@ def update_trophy_earned_status():
                 for trophy in state.earned_trophies['trophies']:
                     if 'progressedDateTime' in trophy:
                         progressed_datetime = get_datetime_fromisoformat(trophy['progressedDateTime'][:-1])
+                        new_earned_datetime = max(new_earned_datetime, progressed_datetime)
                         if state.previous_earned_datetime < progressed_datetime:
                             state.list_of_trophies_to_display.append(trophy['trophyId'])
                     elif trophy['earned']:
                         earned_datetime = get_datetime_fromisoformat(trophy['earnedDateTime'][:-1])
+                        new_earned_datetime = max(new_earned_datetime, earned_datetime)
                         if state.previous_earned_datetime < earned_datetime:
                             state.list_of_trophies_to_display.append(trophy['trophyId'])
 
                 # Epilog. Update the time and kick off the display state.
                 state.previous_earned_datetime = new_earned_datetime
-                state.trophy_display_state = 4
         else:
             print('trophy title not found')
     print('end of "update_trophy_earned_status" thread')
@@ -92,14 +94,6 @@ def script_tick(seconds):
             if state.trophy_display_dt >= 4.:
                 state.trophy_display_dt = 0.
                 state.trophy_display_state = 3
-        # Get next trophy in the list and set the image/description
-        elif state.trophy_display_state == 4:
-            if state.list_of_trophies_to_display:
-                index = state.list_of_trophies_to_display.pop(0)
-                state.trophy = state.trophies['trophies'][index]
-                state.earned_trophy = state.earned_trophies['trophies'][index]
-                display_trophy_progress()
-                state.trophy_display_state = 1
         # States that involve fades in (1) and out (3)
         else:
             group_source = obs.obs_get_source_by_name('trophy_group')
@@ -114,14 +108,19 @@ def script_tick(seconds):
                 state.trophy_display_opacity = max(state.trophy_display_opacity + (0. - state.trophy_display_opacity) * (state.trophy_display_dt * 6.), 0.)
                 if state.trophy_display_opacity == 0.:
                     state.trophy_display_dt = 0.
-                    state.trophy_display_state = 4
+                    state.trophy_display_state = 0
             obs.obs_data_set_double(group_source_opacity_filter_settings, 'opacity', state.trophy_display_opacity)
             obs.obs_source_update(group_source_opacity_filter, group_source_opacity_filter_settings)
             obs.obs_source_release(group_source_opacity_filter)
             obs.obs_source_release(group_source)
-    # Don't do anything
+    # Get next trophy in the list and set the image/description
     else:
-        state.trophy_display_dt = 0.
+        if state.list_of_trophies_to_display:
+            index = state.list_of_trophies_to_display.pop(0)
+            state.trophy = state.trophies['trophies'][index]
+            state.earned_trophy = state.earned_trophies['trophies'][index]
+            display_trophy_progress()
+            state.trophy_display_state = 1
         
 
 def script_description():
@@ -131,7 +130,6 @@ Track trophies for a PSN account.'''
 
 def script_defaults(settings):
     global state
-    print(f'{obs.obs_data_get_json(settings)}')
     state.psn_thread.start()
 
 def script_properties():
