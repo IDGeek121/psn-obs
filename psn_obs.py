@@ -73,6 +73,7 @@ class PSNState:
     exit = threading.Event()
     psn_thread = threading.Thread(target = update_trophy_earned_status, daemon = True)
     media_source = None
+    media_source_settings = None
 
 state = PSNState()
 
@@ -80,9 +81,16 @@ def script_unload():
     print('script_unload')
     global state
     state.exit.set()
+    obs.obs_data_release(state.media_source_settings)
+    obs.obs_source_release(state.media_source)
     state.psn_thread.join()
 
 def script_load(settings):
+    state.media_source = obs.obs_source_create_private('ffmpeg_source', 'Global Media Source', None)
+    obs.obs_set_output_source(63, state.media_source)
+    obs.obs_source_set_monitoring_type(state.media_source, obs.OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT)
+    state.media_source_settings = obs.obs_data_create()
+
     obs.obs_data_erase(settings, 'game_list')
     obs.obs_data_erase(settings, 'trophy_list')
 
@@ -271,15 +279,10 @@ def display_trophy_progress():
 
     # Play a sound effect if the trophy was actually earned
     if state.earned_trophy['earned']:
-        state.media_source = obs.obs_source_create_private('ffmpeg_source', 'Global Media Source', None)
-        s = obs.obs_data_create()
+        s = state.media_source_settings
         if state.earned_trophy['trophyType'] == 'platinum':
             filename = 'trophy_plat.wav'
         else:
             filename = 'trophy.wav'
         obs.obs_data_set_string(s, 'local_file', script_path() + filename)
         obs.obs_source_update(state.media_source, s)
-        obs.obs_source_set_monitoring_type(state.media_source, obs.OBS_MONITORING_TYPE_MONITOR_AND_OUTPUT)
-        obs.obs_data_release(s)
-        obs.obs_set_output_source(63, state.media_source)
-        obs.obs_source_release(state.media_source)
